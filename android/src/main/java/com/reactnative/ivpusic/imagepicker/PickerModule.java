@@ -842,6 +842,10 @@ class PickerModule extends ReactContextBaseJavaModule implements ActivityEventLi
         String videoFileName = "video-" + UUID.randomUUID().toString();
         File path = getCameraOutputDir(activity);
 
+        if (!path.exists() && !path.isDirectory()) {
+            path.mkdirs();
+        }
+        
         File video = File.createTempFile(videoFileName, ".mp4", path);
 
         // Save a file: path for use with ACTION_VIEW intents
