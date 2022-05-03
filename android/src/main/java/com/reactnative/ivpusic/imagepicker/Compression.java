@@ -20,6 +20,9 @@ import java.io.OutputStream;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
+import androidx.core.app.ActivityCompat;
+import android.content.pm.PackageManager;
+import android.Manifest;
 
 /**
  * Created by ipusic on 12/27/16.
@@ -57,7 +60,9 @@ class Compression {
 
         bitmap = Bitmap.createScaledBitmap(bitmap, targetWidth, targetHeight, true);
 
-        File imageDirectory = context.getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+        // File imageDirectory = context.getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+        // Replace getExternalFilesDir with getImageOutputDir for modification of external storage permission
+        File imageDirectory = getImageOutputDir(context);
 
         if (!imageDirectory.exists()) {
             Log.d("image-crop-picker", "Pictures Directory is not existing. Will create this directory.");
@@ -152,6 +157,33 @@ class Compression {
 
         return Pair.create(width, height);
     }
+
+    /**
+     * Start of code for modification of external storage permission
+     */
+    private String getTmpDir(Context context) {
+        String tmpDir = context.getCacheDir() + "/react-native-image-crop-picker";
+        new File(tmpDir).mkdir();
+
+        return tmpDir;
+    }
+
+    private File getImageOutputDir(Context context) {
+        int status = ActivityCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE);
+        File path;
+        if (status == PackageManager.PERMISSION_GRANTED) {
+            path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);
+        } else {
+            path = new File(getTmpDir(context), "images");
+        }
+        if (!path.exists() && !path.isDirectory()) {
+            path.mkdirs();
+        }
+        return path;
+    }
+    /**
+     * End of code for modification of external storage permission
+     */
 
     synchronized void compressVideo(final Activity activity, final ReadableMap options, final String originalVideo, final String compressedVideo, final Promise promise) {
         // todo: video compression
