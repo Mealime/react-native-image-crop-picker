@@ -1,9 +1,13 @@
 package com.reactnative.ivpusic.imagepicker;
 
+import static com.reactnative.ivpusic.imagepicker.StorageUtil.getImageOutputDir;
+import static com.reactnative.ivpusic.imagepicker.StorageUtil.getTmpDir;
+
 import android.Manifest;
 import android.app.Activity;
 import android.content.ClipData;
 import android.content.ContentResolver;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
@@ -12,9 +16,9 @@ import android.graphics.Color;
 import android.media.MediaMetadataRetriever;
 import android.net.Uri;
 import android.os.Build;
-import android.os.Environment;
 import android.provider.MediaStore;
 import android.util.Base64;
+import android.util.Log;
 import android.webkit.MimeTypeMap;
 
 import androidx.core.app.ActivityCompat;
@@ -39,14 +43,17 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Callable;
+
+
 
 class PickerModule extends ReactContextBaseJavaModule implements ActivityEventListener {
 
@@ -73,7 +80,6 @@ class PickerModule extends ReactContextBaseJavaModule implements ActivityEventLi
     private String mediaType = "any";
     private boolean multiple = false;
     private boolean includeBase64 = false;
-    private boolean includeExif = false;
     private boolean cropping = false;
     private boolean cropperCircleOverlay = false;
     private boolean freeStyleCropEnabled = false;
@@ -96,9 +102,9 @@ class PickerModule extends ReactContextBaseJavaModule implements ActivityEventLi
 
     private Uri mCameraCaptureURI;
     private String mCurrentMediaPath;
-    private ResultCollector resultCollector = new ResultCollector();
-    private Compression compression = new Compression();
-    private ReactApplicationContext reactContext;
+    private final ResultCollector resultCollector = new ResultCollector();
+    private final Compression compression = new Compression();
+    private final ReactApplicationContext reactContext;
 
     PickerModule(ReactApplicationContext reactContext) {
         super(reactContext);
@@ -106,12 +112,6 @@ class PickerModule extends ReactContextBaseJavaModule implements ActivityEventLi
         this.reactContext = reactContext;
     }
 
-    private String getTmpDir(Activity activity) {
-        String tmpDir = activity.getCacheDir() + "/react-native-image-crop-picker";
-        new File(tmpDir).mkdir();
-
-        return tmpDir;
-    }
 
     @Override
     public String getName() {
@@ -122,7 +122,6 @@ class PickerModule extends ReactContextBaseJavaModule implements ActivityEventLi
         mediaType = options.hasKey("mediaType") ? options.getString("mediaType") : "any";
         multiple = options.hasKey("multiple") && options.getBoolean("multiple");
         includeBase64 = options.hasKey("includeBase64") && options.getBoolean("includeBase64");
-        includeExif = options.hasKey("includeExif") && options.getBoolean("includeExif");
         width = options.hasKey("width") ? options.getInt("width") : 0;
         height = options.hasKey("height") ? options.getInt("height") : 0;
         cropping = options.hasKey("cropping") && options.getBoolean("cropping");
@@ -188,40 +187,28 @@ class PickerModule extends ReactContextBaseJavaModule implements ActivityEventLi
             return;
         }
 
-        permissionsCheck(activity, promise, Collections.singletonList(Manifest.permission.WRITE_EXTERNAL_STORAGE), new Callable<Void>() {
-            @Override
-            public Void call() throws Exception {
-                try {
-                    String path = pathToDelete;
-                    final String filePrefix = "file://";
-                    if (path.startsWith(filePrefix)) {
-                        path = path.substring(filePrefix.length());
-                    }
-
-                    File file = new File(path);
-                    if (!file.exists()) throw new Exception("File does not exist. Path: " + path);
-
-                    module.deleteRecursive(file);
-                    promise.resolve(null);
-                } catch (Exception ex) {
-                    ex.printStackTrace();
-                    promise.reject(E_ERROR_WHILE_CLEANING_FILES, ex.getMessage());
-                }
-
-                return null;
+        try {
+            String path = pathToDelete;
+            final String filePrefix = "file://";
+            if (path.startsWith(filePrefix)) {
+                path = path.substring(filePrefix.length());
             }
-        });
+
+            File file = new File(path);
+            if (!file.exists()) throw new Exception("File does not exist. Path: " + path);
+
+            module.deleteRecursive(file);
+            promise.resolve(null);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            promise.reject(E_ERROR_WHILE_CLEANING_FILES, ex.getMessage());
+        }
     }
 
     private void permissionsCheck(final Activity activity, final Promise promise, final List<String> requiredPermissions, final Callable<Void> callback) {
 
         List<String> missingPermissions = new ArrayList<>();
         List<String> supportedPermissions = new ArrayList<>(requiredPermissions);
-
-        // android 11 introduced scoped storage, and WRITE_EXTERNAL_STORAGE no longer works there
-        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.Q) {
-            supportedPermissions.remove(Manifest.permission.WRITE_EXTERNAL_STORAGE);
-        }
 
         for (String permission : supportedPermissions) {
             int status = ActivityCompat.checkSelfPermission(activity, permission);
@@ -245,11 +232,9 @@ class PickerModule extends ReactContextBaseJavaModule implements ActivityEventLi
                             if (grantResult == PackageManager.PERMISSION_DENIED) {
                                 if (permission.equals(Manifest.permission.CAMERA)) {
                                     promise.reject(E_NO_CAMERA_PERMISSION_KEY, E_NO_CAMERA_PERMISSION_MSG);
-                                } else if (permission.equals(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
-                                    promise.reject(E_NO_LIBRARY_PERMISSION_KEY, E_NO_LIBRARY_PERMISSION_MSG);
                                 } else {
                                     // should not happen, we fallback on E_NO_LIBRARY_PERMISSION_KEY rejection for minimal consistency
-                                    promise.reject(E_NO_LIBRARY_PERMISSION_KEY, "Required permission missing");
+                                    promise.reject(E_NO_LIBRARY_PERMISSION_KEY, "Required permission " + permission + " missing");
                                 }
                                 return true;
                             }
@@ -319,13 +304,9 @@ class PickerModule extends ReactContextBaseJavaModule implements ActivityEventLi
 
             Intent cameraIntent = new Intent(intent);
 
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
-                mCameraCaptureURI = Uri.fromFile(dataFile);
-            } else {
-                mCameraCaptureURI = FileProvider.getUriForFile(activity,
+            mCameraCaptureURI = FileProvider.getUriForFile(activity,
                         activity.getApplicationContext().getPackageName() + ".provider",
                         dataFile);
-            }
 
             cameraIntent.putExtra(MediaStore.EXTRA_OUTPUT, mCameraCaptureURI);
 
@@ -340,7 +321,7 @@ class PickerModule extends ReactContextBaseJavaModule implements ActivityEventLi
                 return;
             }
 
-            activity.startActivityForResult(cameraIntent, CAMERA_PICKER_REQUEST);
+            startActivityForResult(cameraIntent, CAMERA_PICKER_REQUEST);
         } catch (Exception e) {
             resultCollector.notifyProblem(E_FAILED_TO_OPEN_CAMERA, e);
         }
@@ -370,7 +351,7 @@ class PickerModule extends ReactContextBaseJavaModule implements ActivityEventLi
             galleryIntent.addCategory(Intent.CATEGORY_OPENABLE);
 
             final Intent chooserIntent = Intent.createChooser(galleryIntent, "Pick an image");
-            activity.startActivityForResult(chooserIntent, IMAGE_PICKER_REQUEST);
+            startActivityForResult(chooserIntent, IMAGE_PICKER_REQUEST);
         } catch (Exception e) {
             resultCollector.notifyProblem(E_FAILED_TO_SHOW_PICKER, e);
         }
@@ -404,13 +385,7 @@ class PickerModule extends ReactContextBaseJavaModule implements ActivityEventLi
         resultCollector.setup(promise, false);
 
         final Uri uri = Uri.parse(options.getString("path"));
-        permissionsCheck(activity, promise, Collections.singletonList(Manifest.permission.WRITE_EXTERNAL_STORAGE), new Callable<Void>() {
-            @Override
-            public Void call() {
-                startCropping(activity, uri);
-                return null;
-            }
-        });
+        startCropping(activity, uri);
     }
 
     private String getBase64StringFromFile(String absoluteFilePath) {
@@ -556,18 +531,79 @@ class PickerModule extends ReactContextBaseJavaModule implements ActivityEventLi
     private String resolveRealPath(Activity activity, Uri uri, boolean isCamera) throws IOException {
         String path;
 
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
-            path = RealPathUtil.getRealPathFromURI(activity, uri);
+        if (isCamera) {
+            Uri mediaUri = Uri.parse(mCurrentMediaPath);
+            path = mediaUri.getPath();
         } else {
-            if (isCamera) {
-                Uri mediaUri = Uri.parse(mCurrentMediaPath);
-                path = mediaUri.getPath();
-            } else {
-                path = RealPathUtil.getRealPathFromURI(activity, uri);
+            path = RealPathUtil.getRealPathFromURI(activity, uri);
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+
+            String externalCacheDirPath = Uri.fromFile(activity.getExternalCacheDir()).getPath();
+            String externalFilesDirPath = Uri.fromFile(activity.getExternalFilesDir(null)).getPath();
+            String cacheDirPath = Uri.fromFile(activity.getCacheDir()).getPath();
+            String FilesDirPath = Uri.fromFile(activity.getFilesDir()).getPath();
+
+            if (!path.startsWith(externalCacheDirPath)
+                    && !path.startsWith(externalFilesDirPath)
+                    && !path.startsWith(cacheDirPath)
+                    && !path.startsWith(FilesDirPath)) {
+                File copiedFile = this.createExternalStoragePrivateFile(activity, uri);
+                path = RealPathUtil.getRealPathFromURI(activity, Uri.fromFile(copiedFile));
             }
         }
 
         return path;
+    }
+
+    private File createExternalStoragePrivateFile(Context context, Uri uri) throws FileNotFoundException {
+        InputStream inputStream = context.getContentResolver().openInputStream(uri);
+
+        String extension = this.getExtension(context, uri);
+        File file = new File(context.getExternalCacheDir(), "/temp/" + System.currentTimeMillis() + "." + extension);
+        File parentFile = file.getParentFile();
+        if (parentFile != null) {
+            parentFile.mkdirs();
+        }
+
+        try {
+            // Very simple code to copy a picture from the application's
+            // resource into the external file.  Note that this code does
+            // no error checking, and assumes the picture is small (does not
+            // try to copy it in chunks).  Note that if external storage is
+            // not currently mounted this will silently fail.
+            OutputStream outputStream = new FileOutputStream(file);
+            byte[] data = new byte[inputStream.available()];
+            inputStream.read(data);
+            outputStream.write(data);
+            inputStream.close();
+            outputStream.close();
+        } catch (IOException e) {
+            // Unable to create file, likely because external storage is
+            // not currently mounted.
+            Log.w("image-crop-picker", "Error writing " + file, e);
+        }
+
+        return file;
+    }
+
+    public String getExtension(Context context, Uri uri) {
+        String extension;
+
+        //Check uri format to avoid null
+        if (uri.getScheme().equals(ContentResolver.SCHEME_CONTENT)) {
+            //If scheme is a content
+            final MimeTypeMap mime = MimeTypeMap.getSingleton();
+            extension = mime.getExtensionFromMimeType(context.getContentResolver().getType(uri));
+        } else {
+            //If scheme is a File
+            //This will replace white spaces with %20 and also other special characters. This will avoid returning null values on file name with spaces and special characters.
+            extension = MimeTypeMap.getFileExtensionFromUrl(Uri.fromFile(new File(uri.getPath())).toString());
+
+        }
+
+        return extension;
     }
 
     private BitmapFactory.Options validateImage(String path) throws Exception {
@@ -609,15 +645,6 @@ class PickerModule extends ReactContextBaseJavaModule implements ActivityEventLi
 
         if (includeBase64) {
             image.putString("data", getBase64StringFromFile(compressedImagePath));
-        }
-
-        if (includeExif) {
-            try {
-                WritableMap exif = ExifExtractor.extract(path);
-                image.putMap("exif", exif);
-            } catch (Exception ex) {
-                ex.printStackTrace();
-            }
         }
 
         return image;
@@ -669,14 +696,14 @@ class PickerModule extends ReactContextBaseJavaModule implements ActivityEventLi
         }
 
         UCrop uCrop = UCrop
-                .of(uri, Uri.fromFile(new File(this.getTmpDir(activity), UUID.randomUUID().toString() + ".jpg")))
+                .of(uri, Uri.fromFile(new File(getTmpDir(activity), UUID.randomUUID().toString() + ".jpg")))
                 .withOptions(options);
 
         if (width > 0 && height > 0) {
             uCrop.withAspectRatio(width, height);
         }
 
-        uCrop.start(activity);
+        startActivityForResult(uCrop.getIntent(activity), UCrop.REQUEST_CROP);
     }
 
     private void imagePickerResult(Activity activity, final int requestCode, final int resultCode, final Intent data) {
@@ -805,24 +832,11 @@ class PickerModule extends ReactContextBaseJavaModule implements ActivityEventLi
                 || activity.getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY);
     }
 
-    private File getCameraOutputDir(Activity activity) {
-        int status = ActivityCompat.checkSelfPermission(activity, Manifest.permission.WRITE_EXTERNAL_STORAGE);
-        File path;
-        if (status == PackageManager.PERMISSION_GRANTED) {
-            path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);
-        } else {
-            path = new File(getTmpDir(activity), "camera");
-        }
-        if (!path.exists() && !path.isDirectory()) {
-            path.mkdirs();
-        }
-        return path;
-    }
 
     private File createImageFile(Activity activity) throws IOException {
 
         String imageFileName = "image-" + UUID.randomUUID().toString();
-        File path = getCameraOutputDir(activity);
+        File path = getImageOutputDir(activity, "camera");
 
         if (!path.exists() && !path.isDirectory()) {
             path.mkdirs();
@@ -840,12 +854,12 @@ class PickerModule extends ReactContextBaseJavaModule implements ActivityEventLi
     private File createVideoFile(Activity activity) throws IOException {
 
         String videoFileName = "video-" + UUID.randomUUID().toString();
-        File path = getCameraOutputDir(activity);
+        File path = getImageOutputDir(activity, "camera");
 
         if (!path.exists() && !path.isDirectory()) {
             path.mkdirs();
         }
-        
+
         File video = File.createTempFile(videoFileName, ".mp4", path);
 
         // Save a file: path for use with ACTION_VIEW intents
@@ -865,5 +879,19 @@ class PickerModule extends ReactContextBaseJavaModule implements ActivityEventLi
         map.putInt("height", data.getIntExtra(UCrop.EXTRA_OUTPUT_IMAGE_HEIGHT, DEFAULT_VALUE));
 
         return map;
+    }
+
+    protected void startActivityForResult(Intent intent, int request) {
+        StartActivityRef.StartActivityDelegate delegate = StartActivityRef.REF.get();
+        if (delegate != null) {
+            delegate.startActivityForResult(intent, request);
+            return;
+        }
+        Activity activity = this.reactContext.getCurrentActivity();
+        if (activity == null) {
+            // throw on purpose for the catch block to reject the promise
+            throw new IllegalStateException("getCurrentActivity is null");
+        }
+        activity.startActivityForResult(intent, request);
     }
 }
