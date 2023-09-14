@@ -2,16 +2,13 @@ package com.reactnative.ivpusic.imagepicker;
 
 import static com.reactnative.ivpusic.imagepicker.StorageUtil.getImageOutputDir;
 
-import android.app.Activity;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-//noinspection ExifInterface
 import android.media.ExifInterface;
 import android.util.Log;
 import android.util.Pair;
 
-import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReadableMap;
 
 import java.io.BufferedOutputStream;
@@ -155,16 +152,5 @@ class Compression {
         }
 
         return Pair.create(width, height);
-    }
-
-
-    /**
-     * End of code for modification of external storage permission
-     */
-
-    synchronized void compressVideo(final Activity activity, final ReadableMap options, final String originalVideo, final String compressedVideo, final Promise promise) {
-        // todo: video compression
-        // failed attempt 1: ffmpeg => slow and licensing issues
-        promise.resolve(originalVideo);
     }
 }

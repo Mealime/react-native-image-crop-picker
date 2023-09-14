@@ -1,13 +1,10 @@
 package com.reactnative.ivpusic.imagepicker;
 
-import android.annotation.TargetApi;
-import android.content.ContentUris;
+import static com.reactnative.ivpusic.imagepicker.StorageUtil.getTmpDir;
+
 import android.content.Context;
 import android.database.Cursor;
 import android.net.Uri;
-import android.os.Build;
-import android.os.Environment;
-import android.provider.DocumentsContract;
 import android.provider.MediaStore;
 
 import java.io.File;
@@ -19,9 +16,10 @@ class RealPathUtil {
     static String getRealPathFromURI(final Context context, final Uri uri) throws IOException {
         if ("content".equalsIgnoreCase(uri.getScheme())) {
             // Return the remote address
-            if (isGooglePhotosUri(uri))
+            if (isGooglePhotosUri(uri)) {
                 return uri.getLastPathSegment();
-            return getDataColumn(context, uri, null, null);
+            }
+            return getDataColumn(context, uri);
         }
         // File
         else if ("file".equalsIgnoreCase(uri.getScheme())) {
@@ -41,8 +39,7 @@ class RealPathUtil {
      * @return file that has been written
      */
     private static File writeToFile(Context context, String fileName, Uri uri) {
-        String tmpDir = context.getCacheDir() + "/react-native-image-crop-picker";
-        Boolean created = new File(tmpDir).mkdir();
+        String tmpDir = getTmpDir(context);
         fileName = fileName.substring(fileName.lastIndexOf('/') + 1);
         File path = new File(tmpDir);
         File file = new File(path, fileName);
@@ -69,22 +66,16 @@ class RealPathUtil {
      *
      * @param context The context.
      * @param uri The Uri to query.
-     * @param selection (Optional) Filter used in the query.
-     * @param selectionArgs (Optional) Selection arguments used in the query.
      * @return The value of the _data column, which is typically a file path.
      */
-    private static String getDataColumn(Context context, Uri uri, String selection,
-                                        String[] selectionArgs) {
+    private static String getDataColumn(Context context, Uri uri) {
 
-        Cursor cursor = null;
         final String[] projection = {
                 MediaStore.MediaColumns.DATA,
                 MediaStore.MediaColumns.DISPLAY_NAME,
         };
-
-        try {
-            cursor = context.getContentResolver().query(uri, projection, selection, selectionArgs,
-                    null);
+        try (Cursor cursor = context.getContentResolver().query(uri, projection, null, null,
+            null)) {
             if (cursor != null && cursor.moveToFirst()) {
                 // Fall back to writing to file if _data column does not exist
                 final int index = cursor.getColumnIndex(MediaStore.MediaColumns.DATA);
@@ -98,9 +89,6 @@ class RealPathUtil {
                     return fileWritten.getAbsolutePath();
                 }
             }
-        } finally {
-            if (cursor != null)
-                cursor.close();
         }
         return null;
     }
@@ -138,18 +126,15 @@ class RealPathUtil {
         return "com.google.android.apps.photos.content".equals(uri.getAuthority());
     }
 
-    @TargetApi(Build.VERSION_CODES.KITKAT)
     private static String getPathToNonPrimaryVolume(Context context, String tag) {
         File[] volumes = context.getExternalCacheDirs();
         if (volumes != null) {
             for (File volume : volumes) {
                 if (volume != null) {
                     String path = volume.getAbsolutePath();
-                    if (path != null) {
-                        int index = path.indexOf(tag);
-                        if (index != -1) {
-                            return path.substring(0, index) + tag;
-                        }
+                    int index = path.indexOf(tag);
+                    if (index != -1) {
+                        return path.substring(0, index) + tag;
                     }
                 }
             }

@@ -1,29 +1,19 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.reactnative.ivpusic.imagepicker">
+  package="com.reactnative.ivpusic.imagepicker">
 
-    <queries>
-        <intent>
-            <action android:name="android.media.action.IMAGE_CAPTURE" />
-        </intent>
-    </queries>
+  <application>
+    <provider
+      android:name=".ImagePickerProvider"
+      android:authorities="${applicationId}.imagepickerprovider"
+      android:exported="false"
+      android:grantUriPermissions="true">
+      <meta-data
+        android:name="android.support.FILE_PROVIDER_PATHS"
+        android:resource="@xml/imagepicker_provider_paths" />
+    </provider>
 
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-
-    <application>
-
-        <provider
-            android:name=".IvpusicImagePickerFileProvider"
-            android:authorities="${applicationId}.provider"
-            android:exported="false"
-            android:grantUriPermissions="true">
-            <meta-data
-                android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/ivpusic_imagepicker_provider_paths" />
-        </provider>
-
-        <activity
-            android:name="com.yalantis.ucrop.UCropActivity"
-            android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
-    </application>
-
+    <activity
+      android:name="com.yalantis.ucrop.UCropActivity"
+      android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
+  </application>
 </manifest>

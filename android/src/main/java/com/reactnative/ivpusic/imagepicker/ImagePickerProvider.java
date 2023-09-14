@@ -5,5 +5,5 @@ import androidx.core.content.FileProvider;
 /**
  * A custom {@code FileProvider} prevents manifest {@code <provider>} name collisions.
  */
-public class IvpusicImagePickerFileProvider extends FileProvider {
+public class ImagePickerProvider extends FileProvider {
 }
