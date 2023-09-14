@@ -1,9 +1,15 @@
-# Forked from ivpusic/react-native-image-crop-picker
-This is forked from ivpusic/react-native-image-crop-picker. The difference is that this has some modification to remove the external storage permission in Android. It is removed because it is not needed for Petfinder and it was causing security warnings in security scanning.
+# Forked from kraken-nerd/react-native-image-crop-picker
 
-- **main** is the branch Petfinder app uses, which inculdes the modification for removing the external storage permission in Android.
-- **master-origin** is the original copy from the original repo.
-- **remove-external-storage-requirements-0.37.3** has the code for removing the external storage permission in Android, which was added to v0.37.3 of the original repo.
+This is forked from kraken-nerd/react-native-image-crop-picker with merge of master from
+ivpusic/react-native-image-crop-picker.
+
+Picked some other helpful inspiration out of react-native-image-picker to improve the intent usage.
+
+We have stripped out a lot of the complexity, modernized the lib, and simplified permissions by shifting responsibility to the js side.
+
+Video support removed because we don't need it
+
+Some slightly odd support added to allow use withing a ReactFragment that is part of a FragmentActivity by setting `StartActivityRef.REF = new WeakReference<>(this);`
 
 
 # react-native-image-crop-picker
