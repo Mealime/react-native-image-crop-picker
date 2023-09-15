@@ -11,6 +11,8 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.PickVisualMediaRequest;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia;
+import androidx.activity.result.contract.ActivityResultContracts.TakePicture;
+import androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult;
 import androidx.core.content.FileProvider;
 
 import com.facebook.react.bridge.Promise;
@@ -44,19 +46,19 @@ class PickerModuleImpl {
         // ref: https://developer.android.com/training/data-storage/shared/photopicker#select-single-item
         // Registers a photo picker activity launcher in single-select mode.
         pickMedia =
-            caller.registerForActivityResult(new ActivityResultContracts.PickVisualMedia(), uri -> {
+            caller.registerForActivityResult(new PickVisualMedia(), uri -> {
                 if (pickMediaCallback != null) {
                     pickMediaCallback.onActivityResult(uri);
                 }
             });
 
-        takePicture = caller.registerForActivityResult(new ActivityResultContracts.TakePicture(), result -> {
+        takePicture = caller.registerForActivityResult(new TakePicture(), result -> {
             if (takePictureCallback != null) {
                 takePictureCallback.onActivityResult(result);
             }
         });
 
-        cropMedia = caller.registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+        cropMedia = caller.registerForActivityResult(new StartActivityForResult(), result -> {
             if (cropMediaCallback != null) {
                 cropMediaCallback.onActivityResult(result);
             }
