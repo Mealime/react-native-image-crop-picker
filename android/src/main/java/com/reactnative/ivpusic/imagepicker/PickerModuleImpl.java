@@ -10,7 +10,9 @@ import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultCaller;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.PickVisualMediaRequest;
+import androidx.activity.result.contract.ActivityResultContract;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.core.content.FileProvider;
 
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactContext;
@@ -27,6 +29,7 @@ class PickerModuleImpl {
     public static final PickerModuleImpl INSTANCE = new PickerModuleImpl();
 
 
+
     private PickerModuleImpl() {
     }
 
@@ -38,6 +41,9 @@ class PickerModuleImpl {
     private ActivityResultLauncher<Intent> cropMedia;
     private ActivityResultCallback<ActivityResult> cropMediaCallback;
 
+    private ActivityResultLauncher<Uri> takePicture;
+    private ActivityResultCallback<Boolean> takePictureCallback;
+
     public void register(ActivityResultCaller caller) {
         // ref: https://developer.android.com/training/data-storage/shared/photopicker#select-single-item
         // Registers a photo picker activity launcher in single-select mode.
@@ -48,11 +54,18 @@ class PickerModuleImpl {
                 }
             });
 
+        takePicture = caller.registerForActivityResult(new ActivityResultContracts.TakePicture(), result -> {
+            if (takePictureCallback != null) {
+                takePictureCallback.onActivityResult(result);
+            }
+        });
+
         cropMedia = caller.registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
             if (cropMediaCallback != null) {
                 cropMediaCallback.onActivityResult(result);
             }
         });
+
     }
 
 
@@ -60,15 +73,7 @@ class PickerModuleImpl {
         // Launch the photo picker and let the user choose images and videos.
         pickMediaCallback = uri -> {
             if (uri != null) {
-//                WritableMap result = new WritableNativeMap();
-//                final MimeTypeMap mime = MimeTypeMap.getSingleton();
-//                String mimeType = reactContext.getContentResolver().getType(uri);
-//                result.putString("path", uri.toString());
-//                result.putString("type", mimeType);
-//                result.putString("extension", mime.getExtensionFromMimeType(mimeType));
-//                promise.resolve(result);
                 openCropper(uri, promise, config);
-
             } else {
                 promise.reject("NO_IMAGE_SELECTED", "An image was not selected");
             }
@@ -76,6 +81,28 @@ class PickerModuleImpl {
         pickMedia.launch(new PickVisualMediaRequest.Builder()
             .setMediaType(ActivityResultContracts.PickVisualMedia.ImageOnly.INSTANCE)
             .build());
+    }
+
+
+    public void openCamera(Promise promise, Config config) {
+        try {
+            File output = createTempImage();
+            Uri outputUri = Uri.fromFile(output);
+            String uriAuthority = outputUri.getAuthority();
+            Uri extUri = FileProvider.getUriForFile(reactContext, "rnicp.provider", output);
+
+            takePictureCallback = success -> openCropper(outputUri, promise, config);
+            takePicture.launch(extUri);
+        } catch (IOException ex) {
+            promise.reject("IOException", ex.getMessage());
+        } catch (Exception ex){
+            promise.reject("Exception", ex.getMessage());
+        }
+
+    }
+
+    private File createTempImage() throws IOException {
+        return File.createTempFile(UUID.randomUUID().toString(), ".jpg", reactContext.getExternalMediaDirs()[0]);
     }
 
     private void openCropper(Uri uri, Promise promise, Config config) {
@@ -89,7 +116,7 @@ class PickerModuleImpl {
         options.setHideBottomControls(false);
 
         try {
-            File output = File.createTempFile(UUID.randomUUID().toString(), ".jpg", reactContext.getCacheDir());
+            File output = createTempImage();
             String outputPath = Uri.fromFile(output).toString();
             UCrop uCrop = UCrop
                 .of(uri, Uri.fromFile(output))
@@ -112,9 +139,10 @@ class PickerModuleImpl {
             };
             cropMedia.launch(uCrop.getIntent(reactContext));
         } catch (IOException ex) {
-            promise.reject("ERR", ex.getMessage());
+            promise.reject("IOException", ex.getMessage());
         }
 
 
     }
+
 }

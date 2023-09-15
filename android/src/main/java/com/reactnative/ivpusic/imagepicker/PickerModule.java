@@ -44,7 +44,7 @@ class PickerModule extends ReactContextBaseJavaModule implements ActivityEventLi
 
     @ReactMethod
     public void openCamera(final ReadableMap options, final Promise promise) {
-
+        PickerModuleImpl.INSTANCE.openCamera(promise, new Config(options));
     }
 
 

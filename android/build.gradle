@@ -21,6 +21,6 @@ android {
 
 dependencies {
     implementation 'com.facebook.react:react-native:+'
-    implementation 'androidx.activity:activity:1.7.2'
+    implementation 'androidx.activity:activity:1.6.1'
     implementation 'com.github.yalantis:ucrop:2.2.6-native'
 }
