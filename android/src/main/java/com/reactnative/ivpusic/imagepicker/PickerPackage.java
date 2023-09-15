@@ -1,5 +1,8 @@
 package com.reactnative.ivpusic.imagepicker;
 
+import androidx.activity.result.ActivityResultCaller;
+import androidx.activity.result.contract.ActivityResultContracts;
+
 import com.facebook.react.ReactPackage;
 import com.facebook.react.bridge.NativeModule;
 import com.facebook.react.bridge.ReactApplicationContext;
@@ -13,6 +16,15 @@ import java.util.List;
  * Created by ipusic on 5/16/16.
  */
 public class PickerPackage implements ReactPackage {
+
+    /**
+     * Special handling to allow for early registry of activity result hooks
+     * Fragments must call registerForActivityResult() before they are created
+     */
+    public static void register(ActivityResultCaller caller){
+        PickerModuleImpl.INSTANCE.register(caller);
+    }
+
     @Override
     public List<ViewManager> createViewManagers(ReactApplicationContext reactContext) {
         return Collections.emptyList();
