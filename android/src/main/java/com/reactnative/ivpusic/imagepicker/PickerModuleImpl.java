@@ -3,20 +3,18 @@ package com.reactnative.ivpusic.imagepicker;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.net.Uri;
-import android.webkit.MimeTypeMap;
 
 import androidx.activity.result.ActivityResult;
 import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultCaller;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.PickVisualMediaRequest;
-import androidx.activity.result.contract.ActivityResultContract;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia;
 import androidx.core.content.FileProvider;
 
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactContext;
-import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.bridge.WritableNativeMap;
 import com.yalantis.ucrop.UCrop;
@@ -27,8 +25,6 @@ import java.util.UUID;
 
 class PickerModuleImpl {
     public static final PickerModuleImpl INSTANCE = new PickerModuleImpl();
-
-
 
     private PickerModuleImpl() {
     }
@@ -78,8 +74,14 @@ class PickerModuleImpl {
                 promise.reject("NO_IMAGE_SELECTED", "An image was not selected");
             }
         };
+
+        // Android Studio reports an error, but it's not a real error! Code compiles just fine
+        // ref: https://stackoverflow.com/a/74000104
+        // Fix is to update to androidx.activity 1.7.0, but we can't do that yet so we are stuck with this
+        PickVisualMedia.VisualMediaType mediaType =
+            (PickVisualMedia.VisualMediaType) PickVisualMedia.ImageOnly.INSTANCE;
         pickMedia.launch(new PickVisualMediaRequest.Builder()
-            .setMediaType(ActivityResultContracts.PickVisualMedia.ImageOnly.INSTANCE)
+            .setMediaType(mediaType)
             .build());
     }
 
@@ -89,7 +91,8 @@ class PickerModuleImpl {
             File output = createTempImage();
             Uri outputUri = Uri.fromFile(output);
             String uriAuthority = outputUri.getAuthority();
-            Uri extUri = FileProvider.getUriForFile(reactContext, "rnicp.provider", output);
+            String authority = reactContext.getApplicationInfo().packageName + ".rnicp.provider";
+            Uri extUri = FileProvider.getUriForFile(reactContext, authority, output);
 
             takePictureCallback = success -> openCropper(outputUri, promise, config);
             takePicture.launch(extUri);
@@ -113,7 +116,7 @@ class PickerModuleImpl {
         options.setFreeStyleCropEnabled(false);
         options.setShowCropGrid(true);
         options.setShowCropFrame(true);
-        options.setHideBottomControls(false);
+        options.setHideBottomControls(true);
 
         try {
             File output = createTempImage();
@@ -124,6 +127,7 @@ class PickerModuleImpl {
 
             if (config.width > 0 && config.height > 0) {
                 uCrop.withAspectRatio(config.width, config.height);
+                uCrop.withMaxResultSize(config.width, config.height);
             }
 
             cropMediaCallback = result -> {

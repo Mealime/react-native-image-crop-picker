@@ -1,19 +1,37 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:tools="http://schemas.android.com/tools"
   package="com.reactnative.ivpusic.imagepicker">
 
   <application>
     <provider
       android:name=".ImagePickerProvider"
-      android:authorities="rnicp.provider"
+      android:authorities="${applicationId}.rnicp.provider"
       android:exported="false"
       android:grantUriPermissions="true">
       <meta-data
         android:name="android.support.FILE_PROVIDER_PATHS"
         android:resource="@xml/provider_paths" />
     </provider>
-      <activity
-        android:name="com.yalantis.ucrop.UCropActivity"
-        android:screenOrientation="portrait"
-        android:theme="@style/Theme.AppCompat.Light.NoActionBar"/>
+
+    <activity
+      android:name="com.yalantis.ucrop.UCropActivity"
+      android:screenOrientation="portrait"
+      android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
+
+    <!-- Trigger Google Play services to install the backported photo picker module. -->
+    <!-- ref: https://developer.android.com/training/data-storage/shared/photopicker#select-single-item -->
+    <service
+      android:name="com.google.android.gms.metadata.ModuleDependencies"
+      android:enabled="false"
+      android:exported="false"
+      tools:ignore="MissingClass">
+      <intent-filter>
+        <action android:name="com.google.android.gms.metadata.MODULE_DEPENDENCIES" />
+      </intent-filter>
+      <meta-data
+        android:name="photopicker_activity:0:required"
+        android:value="" />
+    </service>
+
   </application>
 </manifest>

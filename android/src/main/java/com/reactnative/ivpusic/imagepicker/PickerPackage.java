@@ -1,7 +1,6 @@
 package com.reactnative.ivpusic.imagepicker;
 
 import androidx.activity.result.ActivityResultCaller;
-import androidx.activity.result.contract.ActivityResultContracts;
 
 import com.facebook.react.ReactPackage;
 import com.facebook.react.bridge.NativeModule;
@@ -12,9 +11,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-/**
- * Created by ipusic on 5/16/16.
- */
 public class PickerPackage implements ReactPackage {
 
     /**
