@@ -139,7 +139,7 @@ declare module "react-native-image-crop-picker" {
         writeTempFile?: boolean;
     }
 
-    type ImageOptions = CommonOptions & {
+    export type ImageOptions = CommonOptions & {
         mediaType: 'photo';
 
         /**
