@@ -9,10 +9,9 @@ import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultCaller;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.PickVisualMediaRequest;
-import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia;
-import androidx.activity.result.contract.ActivityResultContracts.TakePicture;
 import androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult;
+import androidx.activity.result.contract.ActivityResultContracts.TakePicture;
 import androidx.core.content.FileProvider;
 
 import com.facebook.react.bridge.Promise;
@@ -63,7 +62,6 @@ class PickerModuleImpl {
                 cropMediaCallback.onActivityResult(result);
             }
         });
-
     }
 
 

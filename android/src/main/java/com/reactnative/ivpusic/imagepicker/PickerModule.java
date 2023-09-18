@@ -2,12 +2,7 @@ package com.reactnative.ivpusic.imagepicker;
 
 import android.app.Activity;
 import android.content.Intent;
-import android.util.Log;
 
-import androidx.activity.result.ActivityResultCaller;
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.PickVisualMediaRequest;
-import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.Nullable;
 
 import com.facebook.react.bridge.ActivityEventListener;
