@@ -114,7 +114,7 @@ class PickerModuleImpl {
         options.setCompressionQuality(100);
         options.setCircleDimmedLayer(false);
         options.setFreeStyleCropEnabled(true);
-        options.setShowCropGrid(true);
+        options.setShowCropGrid(false);
         options.setShowCropFrame(true);
         options.setHideBottomControls(true);
 
