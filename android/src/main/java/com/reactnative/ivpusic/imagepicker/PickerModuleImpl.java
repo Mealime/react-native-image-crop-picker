@@ -113,7 +113,7 @@ class PickerModuleImpl {
         options.setCompressionFormat(Bitmap.CompressFormat.JPEG);
         options.setCompressionQuality(100);
         options.setCircleDimmedLayer(false);
-        options.setFreeStyleCropEnabled(false);
+        options.setFreeStyleCropEnabled(true);
         options.setShowCropGrid(true);
         options.setShowCropFrame(true);
         options.setHideBottomControls(true);
@@ -126,7 +126,6 @@ class PickerModuleImpl {
                 .withOptions(options);
 
             if (config.width > 0 && config.height > 0) {
-                uCrop.withAspectRatio(config.width, config.height);
                 uCrop.withMaxResultSize(config.width, config.height);
             }
 
