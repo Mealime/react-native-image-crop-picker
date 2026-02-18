@@ -16,7 +16,8 @@
     <activity
       android:name="com.yalantis.ucrop.UCropActivity"
       android:screenOrientation="portrait"
-      android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
+      android:exported="false"
+      android:theme="@style/UCropTheme" />
 
     <!-- Trigger Google Play services to install the backported photo picker module. -->
     <!-- ref: https://developer.android.com/training/data-storage/shared/photopicker#select-single-item -->
