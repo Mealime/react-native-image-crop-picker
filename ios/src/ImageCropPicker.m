@@ -887,7 +887,8 @@ RCT_EXPORT_METHOD(openCropper:(NSDictionary *)options
             CGFloat heightRatio = [[self.options objectForKey:@"height"] floatValue];
             if (widthRatio > 0 && heightRatio > 0){
                 CGSize aspectRatio = CGSizeMake(widthRatio, heightRatio);
-                cropVC.aspectRatioPreset = aspectRatio;              
+                // cropVC.aspectRatioPreset = aspectRatio;
+                [cropVC setValue:[NSValue valueWithCGSize:aspectRatio] forKey:@"customAspectRatio"];  
             }
             cropVC.aspectRatioLockEnabled = ![[self.options objectForKey:@"freeStyleCropEnabled"] boolValue];
             cropVC.resetAspectRatioEnabled = !cropVC.aspectRatioLockEnabled;
